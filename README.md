@@ -639,6 +639,26 @@ actually uploaded):
 | `polaris_smart_wallet_factory.wasm` | 7,583 bytes | `d64cd44f402db8fb657e8256b20ef7c1b89ebb011bf5adf7e48e3ca335729710` |
 | `polaris_vault.wasm` | 10,568 bytes | `5847a7781556d7c4e727e63fe48a84d6bed9ff6c34686e6a0b09a03d3c925c3d` |
 
+### Diagnostic builds (`release-with-logs`)
+
+`Cargo.toml` defines a `release-with-logs` profile: the release profile with
+`debug-assertions = true`. The Soroban SDK compiles `log!` calls out unless
+debug assertions are on, so their diagnostic events only appear in this build.
+It is the build to deploy when a call such as `settle` fails on testnet and you
+need to see why:
+
+```sh
+# build the release profile first: polaris-vault's contractimport! reads
+# polaris-market's wasm from target/wasm32v1-none/release/
+cargo build --profile release-with-logs --target wasm32v1-none -p polaris-market
+# output: target/wasm32v1-none/release-with-logs/*.wasm
+```
+
+These WASMs are larger than the release ones and have different hashes, so they
+never match `MARKET_WASM_HASH`/`PERPETUAL_WASM_HASH`. Use them for diagnostic
+testnet deploys only, never on mainnet. CI builds this profile on every push so
+it keeps compiling.
+
 ## Deploying
 
 Needs the [Stellar CLI](https://developers.stellar.org/docs/tools/cli/install-cli).

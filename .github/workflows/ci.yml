@@ -58,3 +58,13 @@ jobs:
           cargo build --release --target wasm32v1-none \
             -p polaris-mock-lazer -p polaris-mock-redstone -p polaris-smart-wallet \
             -p polaris-smart-wallet-factory -p polaris-vault -p polaris-perpetual
+      - name: Build the release-with-logs profile
+        # The diagnostic profile documented in the README. Built here so it
+        # can't silently rot. It runs after the release builds above because
+        # polaris-vault's contractimport! reads polaris-market's *release*
+        # wasm, whichever profile the vault itself is built with.
+        run: |
+          cargo build --profile release-with-logs --target wasm32v1-none \
+            -p polaris-market -p polaris-mock-lazer -p polaris-mock-redstone \
+            -p polaris-smart-wallet -p polaris-smart-wallet-factory \
+            -p polaris-vault -p polaris-perpetual
