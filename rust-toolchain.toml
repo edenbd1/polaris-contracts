@@ -1,0 +1,10 @@
+# The release WASM's bytes (and so the SHA-256 hashes in the README and
+# polaris-oracle's MARKET_WASM_HASH/PERPETUAL_WASM_HASH) depend on the exact
+# rustc that compiled them, so local builds and CI use this one version
+# rather than whatever `stable` is that day. Bump it in its own commit and
+# regenerate the README hashes when you do.
+[toolchain]
+channel = "1.100.0"
+targets = ["wasm32v1-none"]
+components = ["rustfmt", "clippy"]
+profile = "minimal"

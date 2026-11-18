@@ -11,9 +11,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32v1-none
+      - name: Install the toolchain pinned in rust-toolchain.toml
+        run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
       - name: Build polaris-market's wasm first
         # contracts/vault AND contracts/smart-wallet-factory both read
@@ -39,9 +38,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32v1-none
+      - name: Install the toolchain pinned in rust-toolchain.toml
+        run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
       - name: Build polaris-market first
         # polaris-vault's `contractimport!` reads polaris-market's compiled

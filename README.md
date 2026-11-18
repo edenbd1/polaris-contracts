@@ -599,11 +599,17 @@ live.
 
 ## Building & testing
 
+The Rust version is pinned in [`rust-toolchain.toml`](./rust-toolchain.toml)
+(currently 1.100.0, with the `wasm32v1-none` target). `rustup` picks it up
+automatically in this directory, and CI installs the same version, so a local
+build produces the same WASM bytes as CI. Changing the pin changes the
+release hashes below, so bump it in its own commit and regenerate them.
+
 ```sh
 # unit tests (native target; 100 across the whole workspace)
 cargo test --workspace
 
-# release WASM (requires `rustup target add wasm32v1-none`)
+# release WASM (the pinned toolchain includes the wasm32v1-none target)
 # polaris-market first, on its own — polaris-vault's contractimport! reads
 # its compiled wasm as a file at build time, a dependency Cargo's own
 # graph doesn't know about (see "The capital-efficiency vault" above).
