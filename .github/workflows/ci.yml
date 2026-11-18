@@ -5,16 +5,26 @@ on:
     branches: [main]
   pull_request:
 
+# Every action below is pinned to a full commit SHA (with the release in a
+# comment) because this workflow builds the WASM whose hashes are published
+# and deployed: a moved or force-pushed tag would otherwise run new code in
+# that build. Dependabot (.github/dependabot.yml) proposes the bumps.
+permissions:
+  contents: read
+
 jobs:
   test:
     name: cargo test --workspace
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
+          # Explicit now that the ref is a SHA rather than the `stable`
+          # branch name, which is what used to select the toolchain.
+          toolchain: stable
           targets: wasm32v1-none
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Build polaris-market's wasm first
         # contracts/vault AND contracts/smart-wallet-factory both read
         # sibling contracts' compiled wasm as *files* at macro-expansion
@@ -38,11 +48,14 @@ jobs:
     name: release WASM builds
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: dtolnay/rust-toolchain@39008827e6b4319a349e9a42dfc90579dd25f1ca # stable
         with:
+          # Explicit now that the ref is a SHA rather than the `stable`
+          # branch name, which is what used to select the toolchain.
+          toolchain: stable
           targets: wasm32v1-none
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
       - name: Build polaris-market first
         # polaris-vault's `contractimport!` reads polaris-market's compiled
         # wasm as a *file*, at macro-expansion time — a dependency invisible
