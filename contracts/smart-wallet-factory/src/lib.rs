@@ -56,7 +56,7 @@
 //! code being deployed is always this factory's own known-good wallet
 //! implementation, never a caller's choice.
 
-use soroban_sdk::{contract, contracterror, contractimpl, symbol_short, vec, Address, Bytes, BytesN, Env, Symbol};
+use soroban_sdk::{contract, contracterror, contractevent, contractimpl, symbol_short, vec, Address, Bytes, BytesN, Env, Symbol};
 
 const STORAGE_KEY_WASM_HASH: Symbol = symbol_short!("wasm");
 const STORAGE_KEY_ORIGIN: Symbol = symbol_short!("origin");
@@ -78,6 +78,32 @@ fn touch(env: &Env) {
 pub enum Error {
     AlreadyInitialized = 1,
     NotInitialized = 2,
+}
+
+/// Emitted by `deploy` once the new wallet exists and is initialized.
+///
+/// - topics: `("deploy", wallet)`
+/// - data: the wallet's 65-byte SEC1 `public_key`
+///
+/// This is the only on-chain record of which wallets a factory has created,
+/// so an indexer can list them (and map passkey -> wallet) without
+/// scanning every transaction. The data is the full key rather than
+/// `sha256(public_key)`: the hash is the deploy salt and can always be
+/// recomputed from the key, but not the other way round.
+///
+/// Consumers: any indexer of deployed wallets, and migration or incident
+/// sweeps across factory generations (for example finding every wallet a
+/// given factory deployed).
+///
+/// Uses `#[contractevent]` rather than `env.events().publish()`, which is
+/// deprecated in soroban-sdk 26 (see #1); the resulting topics and data are
+/// the same as `publish((symbol_short!("deploy"), wallet), public_key)`.
+#[contractevent(topics = ["deploy"], data_format = "single-value")]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct WalletDeployed {
+    #[topic]
+    pub wallet: Address,
+    pub public_key: BytesN<65>,
 }
 
 #[contract]
@@ -117,6 +143,8 @@ impl SmartWalletFactory {
     /// why neither is a parameter here. Deliberately unauthenticated:
     /// anyone can pay to deploy anyone's wallet, which is what lets this
     /// system's backend onboard a user who holds zero XLM.
+    ///
+    /// Emits [`WalletDeployed`] on success.
     pub fn deploy(env: Env, public_key: BytesN<65>) -> Result<Address, Error> {
         let wasm_hash: BytesN<32> = env
             .storage()
@@ -139,6 +167,11 @@ impl SmartWalletFactory {
             vec![&env, public_key.to_val(), origin.to_val()],
         );
         touch(&env);
+        WalletDeployed {
+            wallet: address.clone(),
+            public_key,
+        }
+        .publish(&env);
         Ok(address)
     }
 

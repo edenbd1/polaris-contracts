@@ -296,6 +296,22 @@ address regardless of which frontend calls the factory — `resolve(public_key)`
 computes that address without deploying anything, so a caller can check
 whether a wallet already exists before prompting a "create wallet" flow.
 
+Every successful `deploy()` also emits a `deploy` event, so the set of
+wallets a factory has created can be indexed without scanning every
+transaction (analytics, migration sweeps across factory generations,
+incident response):
+
+| Topics | Data |
+|---|---|
+| `("deploy", wallet: Address)` | `public_key: BytesN<65>` |
+
+The data is the full SEC1 key rather than `sha256(public_key)`: the hash is
+the deploy salt and can be recomputed from the key, not the reverse. A
+redeploy for an already-used key fails before the event is published, so
+each wallet appears exactly once. The exact shape is pinned by
+`deploy_emits_the_wallet_address_and_public_key` in
+`contracts/smart-wallet-factory/src/test.rs`.
+
 ### Factory wasm pinning — a real, confirmed-exploitable bug that shipped fixed
 
 `smart-wallet-factory`'s `deploy()` used to take `wasm_hash` as a caller-
@@ -600,7 +616,7 @@ live.
 ## Building & testing
 
 ```sh
-# unit tests (native target; 100 across the whole workspace)
+# unit tests (native target; 102 across the whole workspace)
 cargo test --workspace
 
 # release WASM (requires `rustup target add wasm32v1-none`)
@@ -619,11 +635,11 @@ shasum -a 256 target/wasm32v1-none/release/*.wasm
 | `polaris-market` | 48 |
 | `polaris-perpetual` | 22 |
 | `polaris-smart-wallet` | 11 |
-| `polaris-smart-wallet-factory` | 9 |
+| `polaris-smart-wallet-factory` | 11 |
 | `polaris-vault` | 6 |
 | `polaris-mock-redstone` | 3 |
 | `polaris-mock-lazer` | 1 |
-| **Total** | **100** |
+| **Total** | **102** |
 
 Current build (regenerate after any contract change — `polaris-oracle`'s
 `MARKET_WASM_HASH`/`PERPETUAL_WASM_HASH` must track whatever hash is

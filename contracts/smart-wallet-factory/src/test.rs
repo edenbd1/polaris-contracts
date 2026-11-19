@@ -2,7 +2,10 @@
 extern crate std;
 
 use super::*;
-use soroban_sdk::{testutils::Address as _, Env};
+use soroban_sdk::{
+    testutils::{Address as _, Events as _},
+    Env, IntoVal,
+};
 
 // Real compiled child-contract WASM, built by
 // `cargo build --release --target wasm32v1-none -p polaris-smart-wallet`.
@@ -208,4 +211,45 @@ fn deploy_always_uses_the_pinned_wasm_never_a_caller_choice() {
         soroban_sdk::vec![&env],
     );
     assert_eq!(stored_pk, pk, "the deployed contract is a real smart-wallet, not attacker-chosen code");
+}
+
+// The `deploy` event is asserted in its raw (topics, data) form, the
+// shape an indexer actually reads off the ledger, so renaming the topic,
+// reordering it, or changing the data type fails here.
+#[test]
+fn deploy_emits_the_wallet_address_and_public_key() {
+    let env = Env::default();
+    let (factory_id, _) = setup(&env);
+    let pk = sample_pk(&env, 7);
+    let client = SmartWalletFactoryClient::new(&env, &factory_id);
+
+    let wallet = client.deploy(&pk);
+
+    assert_eq!(
+        env.events().all().filter_by_contract(&factory_id),
+        soroban_sdk::vec![
+            &env,
+            (
+                factory_id.clone(),
+                (symbol_short!("deploy"), wallet.clone()).into_val(&env),
+                pk.into_val(&env),
+            ),
+        ]
+    );
+}
+
+#[test]
+fn failed_redeploy_emits_no_second_deploy_event() {
+    let env = Env::default();
+    let (factory_id, _) = setup(&env);
+    let pk = sample_pk(&env, 8);
+    let client = SmartWalletFactoryClient::new(&env, &factory_id);
+
+    client.deploy(&pk);
+    assert!(client.try_deploy(&pk).is_err());
+
+    // `events().all()` reports only the last invocation, here the failed
+    // redeploy. It traps in `deploy_v2` before reaching the publish, so an
+    // indexer never sees a second `deploy` event for one wallet.
+    assert_eq!(env.events().all().filter_by_contract(&factory_id).events().len(), 0);
 }
